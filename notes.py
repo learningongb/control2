@@ -17,6 +17,14 @@ class note:
             self.text = text
         self.modified = datetime.now()
 
+    def printnote(self, short: bool):
+        print("\033[32m" + self.modified.strftime("%d.%m.%Y %H:%M") + "\033[0m")
+        print(self.caption)
+        if not short:
+            print(self.text)
+        print("\033[35mid=" + self.uuid + "\033[0m")
+
+
 class notelist:
 
     def __init__(self) -> None:
@@ -99,11 +107,14 @@ class menu:
                 '6': self.printlistwithfilter,
                 }
 
-    def printlist(self) -> None:
+    def printlist(self, begindate: datetime|None = None, enddate: datetime|None = None) -> None:
+        if enddate:
+            enddate = datetime(enddate.year, enddate.month, enddate.day, 23,59,59,999999)
         for item in self.notelist.notes:
-            print(item.modified)
-            print(item.caption)
-            print(item.uuid)
+            if (begindate and begindate > item.modified
+                or enddate and enddate < item.modified):
+                continue
+            item.printnote(True)
 
     def addnote(self) -> None:
         print("Введите заголовок заметки:")
@@ -112,15 +123,14 @@ class menu:
         text = input()
         self.notelist.add(caption, text)
         self.reader.savenotes(self.notelist)
+        print("Заметка добавлена")
 
     def printnote(self) -> None:
         print("Введите идентификатор заметки:")
         uid = input()
         note = self.notelist.finditem(uid)
         if note:
-            print(note.modified)
-            print(note.caption)
-            print(note.text)
+            note.printnote(False)
         else:
             print("Заметка не найдена")
 
@@ -151,9 +161,30 @@ class menu:
         else:
             print("Заметка не найдена")
 
+    @staticmethod
+    def inputdateorempty(message: str) -> datetime | None:
+        while True:
+            print(message)
+            inputdate = input()
+            if inputdate:
+                try:
+                    dateparts = inputdate.split(".")
+                    if len(dateparts) != 3:
+                        continue
+                    inputdate = datetime(int(dateparts[2]), int(dateparts[1]), int(dateparts[0]))
+                    break
+                except:
+                    continue
+            else:
+                inputdate = None
+                break
+        return inputdate
+
     def printlistwithfilter(self):
-        pass
-        
+        begindate = menu.inputdateorempty("Введите дату начала dd.mm.yyyy (или пустое значение, если дата начала не задана)")
+        enddate = menu.inputdateorempty("Введите дату окончания dd.mm.yyyy (или пустое значение, если дата начала не задана)")
+        self.printlist(begindate=begindate, enddate=enddate)
+
     @staticmethod
     def printmenu():
         print("Введите команду:")
@@ -174,7 +205,6 @@ class menu:
             command = self.menuitems.get(answer)
             if command:
                 command()
-
 
 if __name__ == "__main__":
     reader=notereaderjson()
